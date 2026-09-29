@@ -32,7 +32,7 @@ If you prefer setting up the Web Service manually on Render:
    - **Region**: Singapore, Oregon, or Frankfurt (closest to your users)
    - **Branch**: `main`
    - **Runtime**: `Node`
-   - **Build Command**: `npm run build`
+   - **Build Command**: `npm install --legacy-peer-deps && npm run build`
    - **Start Command**: `npm start`
    - **Instance Type**: `Free`
 4. Under **"Advanced"** → **"Health Check Path"**, enter:
@@ -43,6 +43,7 @@ If you prefer setting up the Web Service manually on Render:
    | Key | Value | Notes |
    | :--- | :--- | :--- |
    | `NODE_ENV` | `production` | Enables production static bundle serving |
+   | `NPM_CONFIG_LEGACY_PEER_DEPS` | `true` | Ensures clean npm package resolution |
    | `PORT` | `10000` | (Render sets this automatically, but standard is 10000) |
    | `JWT_SECRET` | *(Random 32+ character string)* | Used to sign access tokens |
    | `JWT_REFRESH_SECRET` | *(Random 32+ character string)* | Used to sign refresh tokens |

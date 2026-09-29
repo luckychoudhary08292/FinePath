@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      // Gracefully handle [vite] WebSocket / HMR messages in iframe environment where HMR is disabled
+      (function() {
+        const isViteOrWs = function(str) {
+          if (!str || typeof str !== 'string') return false;
+          return str.includes('[vite]') || str.includes('WebSocket') || str.includes('ws://') || str.includes('wss://');
+        };
+        const origError = console.error;
+        console.error = function(...args) {
+          if (args.some(a => isViteOrWs(typeof a === 'string' ? a : a?.message))) return;
+          origError.apply(console, args);
+        };
+        const origWarn = console.warn;
+        console.warn = function(...args) {
+          if (args.some(a => isViteOrWs(typeof a === 'string' ? a : a?.message))) return;
+          origWarn.apply(console, args);
+        };
+        window.addEventListener('error', function(e) {
+          if (isViteOrWs(e.message) || isViteOrWs(e.filename)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          const reason = e.reason ? String(e.reason?.message || e.reason) : '';
+          if (isViteOrWs(reason)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>FinePath - Money Management &amp; Earnings Tracker</title>
+    <meta name="description" content="Mobile-first PWA for gig workers and riders to track daily earnings, withdrawals, and incentives with intuitive visual cards." />
+    <meta property="og:title" content="FinePath - Money Management &amp; Earnings Tracker" />
+    <meta property="og:description" content="Mobile-first PWA for gig workers and riders to track daily earnings, withdrawals, and incentives with intuitive visual cards." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#050C1A" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FinePath" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <!-- Google Font for bold clean numbers and clear Hindi Devanagari text -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-100 text-slate-900 antialiased select-none font-sans min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

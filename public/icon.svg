@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient (Deep Navy/Charcoal from logo) -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050C1A" />
+      <stop offset="50%" stop-color="#081426" />
+      <stop offset="100%" stop-color="#0B1A30" />
+    </linearGradient>
+
+    <!-- Bar 1 Gradient: Deep Sky/Electric Blue -->
+    <linearGradient id="bar1Grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#1976D2" />
+      <stop offset="100%" stop-color="#29B6F6" />
+    </linearGradient>
+
+    <!-- Bar 2 Gradient: Cyan to Teal -->
+    <linearGradient id="bar2Grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#0288D1" />
+      <stop offset="100%" stop-color="#00E5FF" />
+    </linearGradient>
+
+    <!-- Bar 3 Gradient: Teal to Emerald -->
+    <linearGradient id="bar3Grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#00897B" />
+      <stop offset="100%" stop-color="#00E676" />
+    </linearGradient>
+
+    <!-- Bar 4 Gradient: Bright Spring Green -->
+    <linearGradient id="bar4Grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#00B0FF" />
+      <stop offset="60%" stop-color="#00C853" />
+      <stop offset="100%" stop-color="#69F0AE" />
+    </linearGradient>
+
+    <!-- Arrow Path Gradient -->
+    <linearGradient id="arrowGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0091EA" />
+      <stop offset="35%" stop-color="#00B0FF" />
+      <stop offset="70%" stop-color="#00E676" />
+      <stop offset="100%" stop-color="#00FF85" />
+    </linearGradient>
+
+    <!-- Arrow Head Fill Gradient -->
+    <linearGradient id="arrowHeadGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00C853" />
+      <stop offset="100%" stop-color="#00FF85" />
+    </linearGradient>
+
+    <!-- Seed Leaves Gradient -->
+    <linearGradient id="leafGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0288D1" />
+      <stop offset="100%" stop-color="#00E5FF" />
+    </linearGradient>
+
+    <!-- Subtle Glow Filter -->
+    <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#00E5FF" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGradient)" />
+
+  <!-- Subtle Inner Border Highlight -->
+  <rect x="12" y="12" width="488" height="488" rx="98" fill="none" stroke="rgba(0, 229, 255, 0.12)" stroke-width="3" />
+
+  <!-- Central Emblem Container -->
+  <g transform="translate(16, -8)">
+    <!-- 4 Growth Bars -->
+    <!-- Bar 1 (Shortest - Blue) -->
+    <rect x="156" y="210" width="34" height="100" rx="6" fill="url(#bar1Grad)" />
+
+    <!-- Bar 2 (Cyan/Teal) -->
+    <rect x="200" y="172" width="34" height="138" rx="6" fill="url(#bar2Grad)" />
+
+    <!-- Bar 3 (Teal/Green) -->
+    <rect x="244" y="142" width="34" height="168" rx="6" fill="url(#bar3Grad)" />
+
+    <!-- Bar 4 (Tallest - Vivid Green) -->
+    <rect x="288" y="112" width="34" height="198" rx="6" fill="url(#bar4Grad)" />
+
+    <!-- Twin Growth Seed / Leaves at the Base (Financial sprout) -->
+    <!-- Left Leaf -->
+    <path d="M 200 310 C 200 286 226 280 240 280 C 240 304 214 314 200 310 Z" 
+          fill="#050C1A" stroke="url(#leafGrad)" stroke-width="7" stroke-linejoin="round" />
+    <!-- Right Leaf -->
+    <path d="M 280 310 C 280 286 254 280 240 280 C 240 304 266 314 280 310 Z" 
+          fill="#050C1A" stroke="url(#leafGrad)" stroke-width="7" stroke-linejoin="round" />
+
+    <!-- Ascending Path Zig-Zag Line and Growth Arrow -->
+    <!-- Triangular Support Base on Left -->
+    <path d="M 122 310 L 198 310" stroke="url(#leafGrad)" stroke-width="7" stroke-linecap="round" />
+    <path d="M 124 308 L 160 270" stroke="url(#leafGrad)" stroke-width="7" stroke-linecap="round" />
+
+    <!-- Continuous Arrow Path line -->
+    <path d="M 126 308 L 222 174 L 250 212 L 348 88" 
+          fill="none" 
+          stroke="url(#arrowGrad)" 
+          stroke-width="11" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          filter="url(#glow)" />
+
+    <!-- Giant Dynamic Arrow Head -->
+    <polygon points="320,86 364,74 354,120 338,105 328,118 314,104 324,91" 
+             fill="url(#arrowHeadGrad)" 
+             stroke="#050C1A" 
+             stroke-width="3" 
+             stroke-linejoin="round" />
+  </g>
+
+  <!-- Brand Wordmark at bottom: FINPATH -->
+  <text x="256" y="394" 
+        font-family="system-ui, -apple-system, 'Plus Jakarta Sans', Montserrat, sans-serif" 
+        font-size="44" 
+        font-weight="900" 
+        letter-spacing="5.5" 
+        text-anchor="middle" 
+        fill="#FFFFFF">
+    FINEPATH
+  </text>
+
+  <!-- Tagline: MONEY MANAGEMENT -->
+  <text x="256" y="428" 
+        font-family="system-ui, -apple-system, 'Plus Jakarta Sans', Montserrat, sans-serif" 
+        font-size="14.5" 
+        font-weight="700" 
+        letter-spacing="4.5" 
+        text-anchor="middle" 
+        fill="#55C9EA">
+    MONEY MANAGEMENT
+  </text>
+</svg>

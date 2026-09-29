@@ -1,0 +1,67 @@
+{
+  "users": [
+    {
+      "_id": "usr_1790690468940py50",
+      "name": "Suresh Patel",
+      "phone": "9832191355",
+      "passwordHash": "$2b$10$VtlBW4dCTZAvJz3TLkUDcu8jkgR1SGBAGYzG7XEa3vsraVxFysQJC",
+      "language": "hi",
+      "createdAt": "2026-09-29T14:01:08.940Z"
+    }
+  ],
+  "platforms": [
+    {
+      "_id": "plt_1790690468940_0",
+      "userId": "usr_1790690468940py50",
+      "platformName": "Zomato",
+      "colorTheme": "#CB202D",
+      "icon": "Z",
+      "isActive": true,
+      "order": 0,
+      "createdAt": "2026-09-29T14:01:08.940Z"
+    },
+    {
+      "_id": "plt_1790690468940_1",
+      "userId": "usr_1790690468940py50",
+      "platformName": "Swiggy",
+      "colorTheme": "#FC8019",
+      "icon": "S",
+      "isActive": true,
+      "order": 1,
+      "createdAt": "2026-09-29T14:01:08.940Z"
+    },
+    {
+      "_id": "plt_1790690468940_2",
+      "userId": "usr_1790690468940py50",
+      "platformName": "Blinkit",
+      "colorTheme": "#F8CB46",
+      "icon": "B",
+      "isActive": true,
+      "order": 2,
+      "createdAt": "2026-09-29T14:01:08.940Z"
+    },
+    {
+      "_id": "plt_1790690468940_3",
+      "userId": "usr_1790690468940py50",
+      "platformName": "Rapido",
+      "colorTheme": "#FFCC00",
+      "icon": "R",
+      "isActive": true,
+      "order": 3,
+      "createdAt": "2026-09-29T14:01:08.940Z"
+    }
+  ],
+  "transactions": [
+    {
+      "_id": "tx_1790690469171dccn",
+      "platformAccountId": "plt_1790690468940_0",
+      "userId": "usr_1790690468940py50",
+      "type": "earning",
+      "amount": 620,
+      "note": "Evening shift 5 orders",
+      "tag": "Swiggy Dinner Surge",
+      "date": "2026-09-29T14:01:09.171Z",
+      "createdAt": "2026-09-29T14:01:09.171Z"
+    }
+  ]
+}

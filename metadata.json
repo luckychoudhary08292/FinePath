@@ -1,0 +1,6 @@
+{
+  "name": "FinePath - Money Management & Earnings Tracker",
+  "description": "Mobile-first PWA for gig workers and riders to track daily earnings, withdrawals, and incentives with intuitive visual cards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

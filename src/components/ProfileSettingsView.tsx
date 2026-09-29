@@ -52,6 +52,12 @@ export const ProfileSettingsView: React.FC<Props> = ({
   };
 
   const handleDeletePlatform = async (pltId: string) => {
+    const confirmMsg =
+      lang === 'hi'
+        ? 'क्या आप वाकई इस प्लेटफ़ॉर्म और इसके सभी लेन-देन को हटाना चाहते हैं?'
+        : 'Are you sure you want to remove this platform and all its transactions?';
+    if (!window.confirm(confirmMsg)) return;
+
     try {
       await ApiClient.deletePlatform(pltId);
       onRefreshData();

@@ -36,6 +36,7 @@ import {
   Minus,
   RefreshCw,
   Layers,
+  Trash2,
 } from 'lucide-react';
 
 type ActiveView = 'home' | 'platform' | 'summary' | 'profile';
@@ -52,6 +53,7 @@ export default function App() {
   const [overallSummary, setOverallSummary] = useState<OverallSummary | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Modals state
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
@@ -84,6 +86,10 @@ export default function App() {
 
       if (platRes?.platforms) {
         setPlatforms(platRes.platforms);
+        setSelectedPlatform((prev) => {
+          if (!prev) return null;
+          return platRes.platforms.find((p) => p.id === prev.id) || null;
+        });
       }
       if (sumRes?.data) {
         setOverallSummary(sumRes.data);
@@ -168,12 +174,78 @@ export default function App() {
     note?: string;
     date?: string;
   }) => {
-    await ApiClient.createTransaction(payload);
-    loadAppData(range);
+    try {
+      await ApiClient.createTransaction(payload);
+      setRefreshTrigger((v) => v + 1);
+      await loadAppData(range);
+    } catch (e) {
+      console.error('Failed to create transaction:', e);
+    }
+  };
+
+  const handleDeleteTransaction = async (txId: string) => {
+    // 1. Instant optimistic removal from recent transactions
+    const target = recentTransactions.find((t) => t.id === txId);
+    setRecentTransactions((prev) => prev.filter((t) => t.id !== txId));
+
+    // 2. Instant optimistic recalculation of overallSummary
+    if (target && overallSummary) {
+      setOverallSummary((prev) => {
+        if (!prev) return prev;
+        let newEarned = prev.totalEarned;
+        let newWithdrawn = prev.totalWithdrawn;
+        let newPending = prev.incentivePending;
+        let newReceived = prev.incentiveReceived;
+
+        if (target.type === 'earning') {
+          newEarned -= target.amount;
+        } else if (target.type === 'withdrawal') {
+          newWithdrawn -= target.amount;
+        } else if (target.type === 'incentive') {
+          if (target.incentiveStatus === 'received') {
+            newReceived -= target.amount;
+            newEarned -= target.amount;
+          } else {
+            newPending -= target.amount;
+          }
+        }
+        const netRemaining = newEarned - newWithdrawn;
+        return {
+          ...prev,
+          totalEarned: Math.max(0, newEarned),
+          totalWithdrawn: Math.max(0, newWithdrawn),
+          incentivePending: Math.max(0, newPending),
+          incentiveReceived: Math.max(0, newReceived),
+          netRemaining,
+          netBalance: netRemaining,
+        };
+      });
+    }
+
+    try {
+      await ApiClient.deleteTransaction(txId);
+      setRefreshTrigger((v) => v + 1);
+      await loadAppData(range);
+    } catch (e) {
+      console.error('Failed to delete transaction:', e);
+      loadAppData(range);
+    }
+  };
+
+  const handleDeletePlatform = async (platformId: string) => {
+    setPlatforms((prev) => prev.filter((p) => p.id !== platformId));
+    setRecentTransactions((prev) => prev.filter((t) => t.platformAccountId !== platformId));
+    if (selectedPlatform?.id === platformId) {
+      setSelectedPlatform(null);
+      setCurrentView('home');
+    }
+    setRefreshTrigger((v) => v + 1);
+    await loadAppData(range);
   };
 
   const handleAddPlatform = async (name: string, color: string, icon: string) => {
     await ApiClient.addPlatform({ platformName: name, colorTheme: color, icon });
+    setRefreshTrigger((v) => v + 1);
     loadAppData(range);
   };
 
@@ -454,13 +526,23 @@ export default function App() {
                                       </div>
                                     </div>
 
-                                    <span
-                                      className={`text-xs font-mono font-black shrink-0 ${
-                                        isEarn ? 'text-emerald-600' : isWithdraw ? 'text-rose-600' : 'text-amber-600'
-                                      }`}
-                                    >
-                                      {isEarn ? '+' : isWithdraw ? '−' : '★'} ₹{tx.amount.toLocaleString('en-IN')}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span
+                                        className={`text-xs font-mono font-black shrink-0 ${
+                                          isEarn ? 'text-emerald-600' : isWithdraw ? 'text-rose-600' : 'text-amber-600'
+                                        }`}
+                                      >
+                                        {isEarn ? '+' : isWithdraw ? '−' : '★'} ₹{tx.amount.toLocaleString('en-IN')}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteTransaction(tx.id)}
+                                        title={lang === 'hi' ? 'हटाएं' : 'Delete transaction'}
+                                        className="p-1 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded transition active:scale-95"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -480,6 +562,12 @@ export default function App() {
                 lang={lang}
                 onBack={() => setCurrentView('home')}
                 onOpenKeypad={(type) => handleOpenKeypad(type, selectedPlatform.id)}
+                onDataChanged={() => {
+                  loadAppData(range);
+                  setRefreshTrigger((v) => v + 1);
+                }}
+                onDeletePlatform={handleDeletePlatform}
+                refreshTrigger={refreshTrigger}
               />
             )}
 
@@ -498,7 +586,10 @@ export default function App() {
                 onBack={() => setCurrentView('home')}
                 onLogout={handleLogout}
                 onToggleLang={handleToggleLang}
-                onRefreshData={() => loadAppData(range)}
+                onRefreshData={() => {
+                  loadAppData(range);
+                  setRefreshTrigger((v) => v + 1);
+                }}
                 onOpenAddPlatform={() => setIsAddPlatformOpen(true)}
               />
             )}

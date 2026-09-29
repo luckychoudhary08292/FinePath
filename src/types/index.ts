@@ -9,6 +9,7 @@ export interface User {
   name: string;
   phone: string;
   language: Language;
+  dailyTarget?: number;
 }
 
 export interface PlatformSummary {
@@ -17,6 +18,7 @@ export interface PlatformSummary {
   incentivePending: number;
   incentiveReceived: number;
   netRemaining: number;
+  netBalance?: number;
 }
 
 export interface PlatformAccount {
@@ -47,6 +49,7 @@ export interface OverallSummary {
   incentivePending: number;
   incentiveReceived: number;
   netRemaining: number;
+  netBalance?: number;
   platformBreakdown: Array<{
     platformId: string;
     platformName: string;

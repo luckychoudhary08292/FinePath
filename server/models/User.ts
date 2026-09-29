@@ -5,6 +5,7 @@ export interface IUser extends Document {
   phone: string;
   passwordHash: string;
   language: 'en' | 'hi';
+  dailyTarget?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +31,10 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ['en', 'hi'],
       default: 'en',
+    },
+    dailyTarget: {
+      type: Number,
+      default: 1500,
     },
   },
   {

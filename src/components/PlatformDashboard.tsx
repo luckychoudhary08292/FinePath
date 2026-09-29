@@ -27,6 +27,9 @@ interface Props {
   lang: Language;
   onBack: () => void;
   onOpenKeypad: (type: TransactionType) => void;
+  onDataChanged?: () => void;
+  onDeletePlatform?: (platformId: string) => void;
+  refreshTrigger?: number;
 }
 
 export const PlatformDashboard: React.FC<Props> = ({
@@ -34,6 +37,9 @@ export const PlatformDashboard: React.FC<Props> = ({
   lang,
   onBack,
   onOpenKeypad,
+  onDataChanged,
+  onDeletePlatform,
+  refreshTrigger,
 }) => {
   const t = getT(lang);
   const [range, setRange] = useState<DateRange>('today');
@@ -72,24 +78,83 @@ export const PlatformDashboard: React.FC<Props> = ({
 
   useEffect(() => {
     fetchDashboardData(range);
-  }, [platform.id, range]);
+  }, [platform.id, range, refreshTrigger]);
 
   const handleToggleIncentive = async (txId: string, currentStatus?: string) => {
     const nextStatus = currentStatus === 'received' ? 'pending' : 'received';
+    // Optimistic toggle
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === txId ? { ...t, incentiveStatus: nextStatus } : t))
+    );
     try {
       await ApiClient.updateIncentiveStatus(txId, nextStatus);
-      fetchDashboardData(range);
+      await fetchDashboardData(range);
+      onDataChanged?.();
     } catch (e) {
       console.error(e);
+      fetchDashboardData(range);
     }
   };
 
   const handleDeleteTx = async (txId: string) => {
+    // 1. Optimistic removal & real-time recalculation
+    const targetTx = transactions.find((t) => t.id === txId);
+    setTransactions((prev) => prev.filter((t) => t.id !== txId));
+
+    if (targetTx) {
+      setSummary((prev) => {
+        let newEarned = prev.totalEarned;
+        let newWithdrawn = prev.totalWithdrawn;
+        let newPending = prev.incentivePending;
+        let newReceived = prev.incentiveReceived;
+
+        if (targetTx.type === 'earning') {
+          newEarned -= targetTx.amount;
+        } else if (targetTx.type === 'withdrawal') {
+          newWithdrawn -= targetTx.amount;
+        } else if (targetTx.type === 'incentive') {
+          if (targetTx.incentiveStatus === 'received') {
+            newReceived -= targetTx.amount;
+            newEarned -= targetTx.amount;
+          } else {
+            newPending -= targetTx.amount;
+          }
+        }
+        const netRemaining = newEarned - newWithdrawn;
+        return {
+          totalEarned: Math.max(0, newEarned),
+          totalWithdrawn: Math.max(0, newWithdrawn),
+          incentivePending: Math.max(0, newPending),
+          incentiveReceived: Math.max(0, newReceived),
+          netRemaining,
+          netBalance: netRemaining,
+        };
+      });
+    }
+
     try {
       await ApiClient.deleteTransaction(txId);
-      fetchDashboardData(range);
+      await fetchDashboardData(range);
+      onDataChanged?.();
     } catch (e) {
-      console.error(e);
+      console.error('Failed to delete transaction:', e);
+      fetchDashboardData(range);
+    }
+  };
+
+  const handleDeletePlatform = async () => {
+    const confirmMsg =
+      lang === 'hi'
+        ? `क्या आप वाकई "${platform.platformName}" और इसके सभी लेन-देन को हटाना चाहते हैं?`
+        : `Are you sure you want to remove "${platform.platformName}" and all associated transactions?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await ApiClient.deletePlatform(platform.id);
+      onDeletePlatform?.(platform.id);
+      onBack();
+    } catch (e) {
+      console.error('Failed to delete platform:', e);
     }
   };
 
@@ -137,10 +202,18 @@ export const PlatformDashboard: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="w-16 flex justify-end">
+          <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/15 text-cyan-200 px-2.5 py-1 rounded-lg border border-white/20">
               {lang === 'hi' ? 'सक्रिय' : 'Live'}
             </span>
+            <button
+              type="button"
+              onClick={handleDeletePlatform}
+              className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 hover:text-white border border-rose-400/30 transition-all active:scale-95"
+              title={lang === 'hi' ? 'प्लेटफ़ॉर्म हटाएं' : 'Remove Platform'}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -422,8 +495,8 @@ export const PlatformDashboard: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => handleDeleteTx(tx.id)}
-                          title="Delete transaction"
-                          className="opacity-40 group-hover:opacity-100 p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition"
+                          title={lang === 'hi' ? 'लेन-देन हटाएं' : 'Delete transaction'}
+                          className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition active:scale-95"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

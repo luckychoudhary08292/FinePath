@@ -43,6 +43,7 @@ interface MemUser {
   phone: string;
   passwordHash: string;
   language: 'en' | 'hi';
+  dailyTarget?: number;
   createdAt: string;
 }
 
@@ -187,7 +188,7 @@ export const DBStore = {
     return newUser;
   },
 
-  async updateUser(id: string, updates: Partial<{ name: string; language: 'en' | 'hi' }>) {
+  async updateUser(id: string, updates: Partial<{ name: string; language: 'en' | 'hi'; dailyTarget?: number }>) {
     if (isMongoActive()) {
       return await UserModel.findByIdAndUpdate(id, { $set: updates }, { new: true }).lean();
     }

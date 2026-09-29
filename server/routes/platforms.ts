@@ -48,10 +48,26 @@ platformsRouter.post('/', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Platform name is required.' });
     }
 
+    const trimmedName = platformName.trim();
+
+    // Check if platform with this name already exists for this user
+    const existing = await DBStore.getPlatformsForUser(userId);
+    const duplicate = existing.find(
+      (p: any) =>
+        p.platformName.trim().toLowerCase() === trimmedName.toLowerCase() && p.isActive !== false
+    );
+    if (duplicate) {
+      return res.status(400).json({
+        success: false,
+        message: 'This delivery platform is already added to your account.',
+        platformId: duplicate._id.toString(),
+      });
+    }
+
     const created = await DBStore.createPlatform(userId, {
-      platformName,
+      platformName: trimmedName,
       colorTheme: colorTheme || '#002970',
-      icon: icon || platformName.trim().charAt(0).toUpperCase(),
+      icon: icon || trimmedName.charAt(0).toUpperCase(),
     });
 
     return res.status(201).json({
@@ -137,6 +153,10 @@ platformsRouter.get('/:id/summary', async (req: AuthRequest, res: Response) => {
     }
 
     const summary = await DBStore.getPlatformSummary(userId, id, range);
+    const enriched = {
+      ...summary,
+      netBalance: summary.netRemaining,
+    };
 
     return res.json({
       success: true,
@@ -147,7 +167,7 @@ platformsRouter.get('/:id/summary', async (req: AuthRequest, res: Response) => {
         icon: platform.icon,
       },
       range,
-      summary,
+      summary: enriched,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to fetch platform summary.' });

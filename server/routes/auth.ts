@@ -143,17 +143,22 @@ authRouter.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
   });
 });
 
-// PATCH /api/auth/profile
-authRouter.patch('/profile', requireAuth, async (req: AuthRequest, res: Response) => {
+// Handler for profile updates (supports both PATCH and PUT)
+const handleProfileUpdate = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const { name, language } = req.body;
+    const { name, language, dailyTarget } = req.body;
 
-    const updates: Partial<{ name: string; language: 'en' | 'hi' }> = {};
+    const updates: Partial<{ name: string; language: 'en' | 'hi'; dailyTarget?: number }> = {};
     if (name) updates.name = name.trim();
     if (language && (language === 'en' || language === 'hi')) updates.language = language;
+    if (typeof dailyTarget === 'number' && dailyTarget >= 0) updates.dailyTarget = dailyTarget;
 
     const updated = await DBStore.updateUser(userId, updates);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
     return res.json({
       success: true,
       user: {
@@ -161,9 +166,13 @@ authRouter.patch('/profile', requireAuth, async (req: AuthRequest, res: Response
         name: updated.name,
         phone: updated.phone,
         language: updated.language,
+        dailyTarget: updated.dailyTarget,
       },
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to update profile.' });
   }
-});
+};
+
+authRouter.patch('/profile', requireAuth, handleProfileUpdate);
+authRouter.put('/profile', requireAuth, handleProfileUpdate);

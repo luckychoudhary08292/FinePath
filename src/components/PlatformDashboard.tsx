@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { getT } from '../i18n/translations';
 import { ApiClient } from '../services/api';
+import { PDFStatementModal } from './PDFStatementModal';
 import {
   ArrowLeft,
   Plus,
@@ -20,6 +21,7 @@ import {
   Clock,
   Trash2,
   Calendar,
+  FileText,
 } from 'lucide-react';
 
 interface Props {
@@ -54,6 +56,7 @@ export const PlatformDashboard: React.FC<Props> = ({
   );
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   const fetchDashboardData = async (newRange: DateRange) => {
     setLoading(true);
@@ -203,7 +206,17 @@ export const PlatformDashboard: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/15 text-cyan-200 px-2.5 py-1 rounded-lg border border-white/20">
+            <button
+              type="button"
+              onClick={() => setIsPdfModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-black bg-white text-[#002970] hover:bg-slate-100 px-3 py-1.5 rounded-lg shadow-xs active:scale-95 transition"
+              title={lang === 'hi' ? `${platform.platformName} बिलिंग PDF एक्सपोर्ट करें` : `Export ${platform.platformName} Billing PDF`}
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>{lang === 'hi' ? 'PDF बिल' : 'PDF Bill'}</span>
+            </button>
+
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/15 text-cyan-200 px-2.5 py-1.5 rounded-lg border border-white/20">
               {lang === 'hi' ? 'सक्रिय' : 'Live'}
             </span>
             <button
@@ -509,6 +522,54 @@ export const PlatformDashboard: React.FC<Props> = ({
           </div>
         </div>
       </div>
+
+      {/* Professional Billing PDF Statement Modal for this platform */}
+      <PDFStatementModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        user={
+          ApiClient.getUser() || {
+            id: 'usr_rider',
+            name: 'Verified Partner',
+            phone: 'Partner Mobile',
+            language: lang,
+          }
+        }
+        lang={lang}
+        periodType={range === 'today' ? 'day' : range === 'week' ? 'week' : range === 'month' ? 'month' : 'all'}
+        periodLabel={
+          range === 'today'
+            ? `${platform.platformName} (${lang === 'hi' ? 'दैनिक' : 'Today'})`
+            : range === 'week'
+            ? `${platform.platformName} (${lang === 'hi' ? 'साप्ताहिक' : 'Weekly'})`
+            : range === 'month'
+            ? `${platform.platformName} (${lang === 'hi' ? 'मासिक' : 'Monthly'})`
+            : `${platform.platformName} (${lang === 'hi' ? 'ऑल-टाइम' : 'All-Time'})`
+        }
+        platformName={platform.platformName}
+        platformAccountId={platform.id}
+        summary={{
+          range,
+          totalEarned: summary.totalEarned,
+          totalWithdrawn: summary.totalWithdrawn,
+          incentivePending: summary.incentivePending,
+          incentiveReceived: summary.incentiveReceived,
+          netRemaining: summary.netRemaining,
+          platformBreakdown: [
+            {
+              platformId: platform.id,
+              platformName: platform.platformName,
+              colorTheme: platform.colorTheme,
+              icon: platform.icon,
+              totalEarned: summary.totalEarned,
+              totalWithdrawn: summary.totalWithdrawn,
+              netRemaining: summary.netRemaining,
+              percentage: 100,
+            },
+          ],
+          transactions,
+        }}
+      />
     </div>
   );
 };

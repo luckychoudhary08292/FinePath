@@ -6,11 +6,11 @@ export const summaryRouter = Router();
 
 summaryRouter.use(requireAuth);
 
-// GET /api/summary/overall?range=today|week|month|all
+// GET /api/summary/overall?range=today|week|month|all&date=YYYY-MM-DD
 summaryRouter.get('/overall', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const range = (req.query.range as string) || 'today';
+    const range = (req.query.date as string) || (req.query.range as string) || 'today';
 
     const overall = await DBStore.getOverallSummary(userId, range);
     const enriched = {
@@ -29,12 +29,12 @@ summaryRouter.get('/overall', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// GET /api/summary/platform/:id?range=today|week|month|all
+// GET /api/summary/platform/:id?range=today|week|month|all&date=YYYY-MM-DD
 summaryRouter.get('/platform/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
     const { id } = req.params;
-    const range = (req.query.range as string) || 'today';
+    const range = (req.query.date as string) || (req.query.range as string) || 'today';
 
     const summary = await DBStore.getPlatformSummary(userId, id, range);
     const enriched = {

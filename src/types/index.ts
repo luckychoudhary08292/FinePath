@@ -2,7 +2,25 @@ export type Language = 'en' | 'hi';
 
 export type TransactionType = 'earning' | 'withdrawal' | 'incentive';
 export type IncentiveStatus = 'pending' | 'received';
-export type DateRange = 'today' | 'week' | 'month' | 'all';
+export type DateRange = 'today' | 'yesterday' | 'week' | 'month' | 'all' | string;
+
+export interface DailyBreakdownItem {
+  date: string;
+  dayName: string;
+  totalEarned: number;
+  totalWithdrawn: number;
+  netRemaining: number;
+  tripCount?: number;
+}
+
+export interface WeeklyBreakdownItem {
+  weekLabel: string;
+  startDate: string;
+  endDate: string;
+  totalEarned: number;
+  totalWithdrawn: number;
+  netRemaining: number;
+}
 
 export interface User {
   id: string;
@@ -42,6 +60,12 @@ export interface Transaction {
   incentiveStatus?: IncentiveStatus;
 }
 
+export interface ExpenseBreakdownItem {
+  tag: string;
+  totalAmount: number;
+  count: number;
+}
+
 export interface OverallSummary {
   range: string;
   totalEarned: number;
@@ -60,4 +84,8 @@ export interface OverallSummary {
     netRemaining: number;
     percentage: number;
   }>;
+  dailyBreakdown?: DailyBreakdownItem[];
+  weeklyBreakdown?: WeeklyBreakdownItem[];
+  expenseBreakdown?: ExpenseBreakdownItem[];
+  transactions?: Transaction[];
 }

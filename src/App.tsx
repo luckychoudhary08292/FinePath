@@ -27,6 +27,7 @@ import { ProfileSettingsView } from './components/ProfileSettingsView';
 import { NumericKeypadModal } from './components/NumericKeypadModal';
 import { AddPlatformModal } from './components/AddPlatformModal';
 import { AuthModal } from './components/AuthModal';
+import { PDFStatementModal } from './components/PDFStatementModal';
 import {
   Home,
   PlusCircle,
@@ -37,7 +38,22 @@ import {
   RefreshCw,
   Layers,
   Trash2,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  FileText,
 } from 'lucide-react';
+
+function getLocalDateString(d = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+const TODAY_STR = getLocalDateString();
+const YESTERDAY_STR = getLocalDateString(new Date(Date.now() - 86400000));
 
 type ActiveView = 'home' | 'platform' | 'summary' | 'profile';
 
@@ -48,7 +64,7 @@ export default function App() {
   );
   const [currentView, setCurrentView] = useState<ActiveView>('home');
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformAccount | null>(null);
-  const [range, setRange] = useState<DateRange>('today');
+  const [range, setRange] = useState<string>(TODAY_STR);
   const [platforms, setPlatforms] = useState<PlatformAccount[]>([]);
   const [overallSummary, setOverallSummary] = useState<OverallSummary | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -60,6 +76,8 @@ export default function App() {
   const [keypadInitialType, setKeypadInitialType] = useState<TransactionType>('earning');
   const [keypadPlatformId, setKeypadPlatformId] = useState<string>('');
   const [isAddPlatformOpen, setIsAddPlatformOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfPeriodType, setPdfPeriodType] = useState<'day' | 'week' | 'month' | 'all'>('day');
 
   const t = getT(lang);
 
@@ -70,6 +88,20 @@ export default function App() {
     if (user) {
       ApiClient.updateProfile({ language: nextLang }).catch(console.error);
     }
+  };
+
+  // Date selection helpers for particular date
+  const handleSelectHomeDate = (selectedDateStr: string) => {
+    setRange(selectedDateStr);
+    loadAppData(selectedDateStr);
+  };
+
+  const handleStepHomeDay = (delta: number) => {
+    const cur = new Date(range);
+    cur.setDate(cur.getDate() + delta);
+    const nextDate = getLocalDateString(cur);
+    setRange(nextDate);
+    loadAppData(nextDate);
   };
 
   // Fetch platforms, overall summary & recent cross-platform transactions
@@ -293,6 +325,118 @@ export default function App() {
             {/* View Router */}
             {currentView === 'home' && (
               <main className="pb-20 md:pb-10 animate-fade-in w-full">
+                {/* Particular Date Selector Bar on Home Page */}
+                <div className="px-3 sm:px-6 pt-3 sm:pt-4">
+                  <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/90 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
+                    {/* Date Indicator and Stepper */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-sky-50 text-[#002970] flex items-center justify-center border border-sky-100 shadow-xs">
+                        <Calendar className="w-4 h-4 text-[#002970]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-xs sm:text-sm text-slate-900">
+                            {range === TODAY_STR
+                              ? (lang === 'hi' ? 'आज का हिसाब' : "Today's Summary")
+                              : range === YESTERDAY_STR
+                              ? (lang === 'hi' ? 'कल का हिसाब' : "Yesterday's Summary")
+                              : (lang === 'hi' ? 'तारीख का हिसाब' : 'Date Summary')}
+                          </span>
+                          <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">
+                            {new Date(range).toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                          {lang === 'hi'
+                            ? 'इस तारीख की कुल कमाई, हाथ में बैलेंस, निकासी और इंसेंटिव'
+                            : 'Gross earnings, in-hand balance, payouts & incentives for this date'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Date Navigation & Picker Buttons */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectHomeDate(TODAY_STR)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                          range === TODAY_STR
+                            ? 'bg-[#002970] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {lang === 'hi' ? 'आज' : 'Today'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectHomeDate(YESTERDAY_STR)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                          range === YESTERDAY_STR
+                            ? 'bg-[#002970] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {lang === 'hi' ? 'कल' : 'Yesterday'}
+                      </button>
+
+                      {/* Date Stepper and Picker */}
+                      <div className="flex items-center bg-slate-100 rounded-xl p-0.5 border border-slate-200/80">
+                        <button
+                          type="button"
+                          onClick={() => handleStepHomeDay(-1)}
+                          className="p-1.5 hover:bg-white rounded-lg text-slate-600 hover:text-slate-900 transition"
+                          title="Previous Day"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+
+                        <label
+                          className="flex items-center gap-1 px-2 py-1 cursor-pointer text-xs font-mono font-bold text-slate-800 hover:bg-white rounded-lg transition"
+                          title={lang === 'hi' ? 'तारीख चुनें' : 'Choose specific date'}
+                        >
+                          <CalendarDays className="w-3.5 h-3.5 text-sky-700" />
+                          <span>{range}</span>
+                          <input
+                            type="date"
+                            value={range}
+                            onChange={(e) => e.target.value && handleSelectHomeDate(e.target.value)}
+                            className="sr-only"
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => handleStepHomeDay(1)}
+                          className="p-1.5 hover:bg-white rounded-lg text-slate-600 hover:text-slate-900 transition"
+                          title="Next Day"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Export Billing PDF Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPdfPeriodType('day');
+                          setIsPdfModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-2xs transition active:scale-95"
+                        title={lang === 'hi' ? 'दैनिक, साप्ताहिक या मासिक बिलिंग PDF एक्सपोर्ट करें' : 'Export Day, Week or Monthly Billing PDF'}
+                      >
+                        <FileText className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{lang === 'hi' ? 'बिलिंग PDF' : 'Billing PDF'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Combined summary strip at top with 4 MINI cards */}
                 <CombinedSummaryStrip
                   lang={lang}
@@ -300,6 +444,7 @@ export default function App() {
                   totalWithdrawn={overallSummary?.totalWithdrawn || 0}
                   netRemaining={overallSummary?.netRemaining || 0}
                   incentivePending={overallSummary?.incentivePending || 0}
+                  incentiveReceived={overallSummary?.incentiveReceived || 0}
                 />
 
                 {/* Desktop Action Bar (Clean single-language actions, no date toggle buttons on home) */}
@@ -418,6 +563,76 @@ export default function App() {
                               </span>
                             </button>
                           </div>
+
+                          {/* Mobile Only: Recent Activity for selected date */}
+                          <div className="block lg:hidden mt-4">
+                            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-xs">
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700">
+                                  {t.recentActivity} ({range === TODAY_STR ? (lang === 'hi' ? 'आज' : 'Today') : range})
+                                </h3>
+                                <button
+                                  onClick={() => handleOpenKeypad('earning')}
+                                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+                                >
+                                  + {lang === 'hi' ? 'नया जोड़ें' : 'Quick Add'}
+                                </button>
+                              </div>
+
+                              {recentTransactions.length === 0 ? (
+                                <div className="text-center py-4 text-xs text-slate-500 font-medium">
+                                  {lang === 'hi' ? 'इस तारीख पर कोई लेनदेन दर्ज नहीं है।' : 'No transactions recorded for this date.'}
+                                </div>
+                              ) : (
+                                <div className="divide-y divide-slate-100 max-h-[240px] overflow-y-auto pr-1">
+                                  {recentTransactions.slice(0, 5).map((tx) => {
+                                    const isEarn = tx.type === 'earning';
+                                    const isWithdraw = tx.type === 'withdrawal';
+                                    const plt = platforms.find((p) => p.id === tx.platformAccountId);
+
+                                    return (
+                                      <div key={tx.id} className="py-2 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <div
+                                            className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black text-white shrink-0 shadow-xs"
+                                            style={{ backgroundColor: plt?.colorTheme || '#002970' }}
+                                          >
+                                            {plt?.icon || plt?.platformName.charAt(0) || '•'}
+                                          </div>
+                                          <div className="min-w-0">
+                                            <span className="font-bold text-xs text-slate-900 block truncate">
+                                              {plt?.platformName || 'Platform'} • {tx.tag || (isEarn ? t.earning : isWithdraw ? t.withdrawal : t.incentive)}
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 block">
+                                              {new Date(tx.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <span
+                                            className={`text-xs font-mono font-black shrink-0 ${
+                                              isEarn ? 'text-emerald-600' : isWithdraw ? 'text-rose-600' : 'text-amber-600'
+                                            }`}
+                                          >
+                                            {isEarn ? '+' : isWithdraw ? '−' : '★'} ₹{tx.amount.toLocaleString('en-IN')}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteTransaction(tx.id)}
+                                            title={lang === 'hi' ? 'हटाएं' : 'Delete transaction'}
+                                            className="p-1 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded transition active:scale-95"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>
@@ -486,7 +701,7 @@ export default function App() {
                         <div>
                           <div className="flex items-center justify-between mb-2.5">
                             <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700">
-                              {t.recentActivity}
+                              {t.recentActivity} ({range === TODAY_STR ? (lang === 'hi' ? 'आज' : 'Today') : range})
                             </h3>
                             <button
                               onClick={() => handleOpenKeypad('earning')}
@@ -498,7 +713,7 @@ export default function App() {
 
                           {recentTransactions.length === 0 ? (
                             <div className="text-center py-6 text-xs text-slate-600 font-medium">
-                              {lang === 'hi' ? 'कोई हालिया लेन-देन नहीं मिला' : 'No recent transactions recorded'}
+                              {lang === 'hi' ? 'इस तारीख पर कोई लेनदेन दर्ज नहीं है।' : 'No transactions recorded for this date.'}
                             </div>
                           ) : (
                             <div className="divide-y divide-slate-100 max-h-[260px] overflow-y-auto pr-1">
@@ -575,6 +790,10 @@ export default function App() {
               <OverallSummaryView
                 lang={lang}
                 onBack={() => setCurrentView('home')}
+                onDataChanged={() => {
+                  loadAppData(range);
+                  setRefreshTrigger((v) => v + 1);
+                }}
               />
             )}
 
@@ -652,6 +871,7 @@ export default function App() {
             platforms={activePlatforms}
             selectedPlatformId={keypadPlatformId}
             initialType={keypadInitialType}
+            initialDate={range}
             lang={lang}
             onSave={handleSaveTransaction}
           />
@@ -664,6 +884,33 @@ export default function App() {
             onClose={() => setIsAddPlatformOpen(false)}
             onAdd={handleAddPlatform}
           />
+
+          {/* Professional Billing PDF Statement Modal */}
+          {overallSummary && (
+            <PDFStatementModal
+              isOpen={isPdfModalOpen}
+              onClose={() => setIsPdfModalOpen(false)}
+              user={
+                user || {
+                  id: 'usr_rider',
+                  name: 'Verified Partner',
+                  phone: 'Partner Mobile',
+                  language: lang,
+                }
+              }
+              lang={lang}
+              periodType={pdfPeriodType}
+              periodLabel={
+                range === TODAY_STR
+                  ? `${range} (${lang === 'hi' ? 'आज' : 'Today'})`
+                  : range === YESTERDAY_STR
+                  ? `${range} (${lang === 'hi' ? 'कल' : 'Yesterday'})`
+                  : range
+              }
+              summary={overallSummary}
+              platforms={platforms}
+            />
+          )}
         </div>
       </div>
     </div>

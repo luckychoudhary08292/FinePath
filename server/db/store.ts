@@ -22,6 +22,24 @@ export interface PlatformSummaryResult extends SummaryResult {
   isActive: boolean;
 }
 
+export interface DailyBreakdownItem {
+  date: string;
+  dayName: string;
+  totalEarned: number;
+  totalWithdrawn: number;
+  netRemaining: number;
+  tripCount?: number;
+}
+
+export interface WeeklyBreakdownItem {
+  weekLabel: string;
+  startDate: string;
+  endDate: string;
+  totalEarned: number;
+  totalWithdrawn: number;
+  netRemaining: number;
+}
+
 export interface OverallSummaryResult extends SummaryResult {
   range: string;
   platformBreakdown: Array<{
@@ -34,6 +52,10 @@ export interface OverallSummaryResult extends SummaryResult {
     netRemaining: number;
     percentage: number;
   }>;
+  dailyBreakdown?: DailyBreakdownItem[];
+  weeklyBreakdown?: WeeklyBreakdownItem[];
+  expenseBreakdown?: Array<{ tag: string; totalAmount: number; count: number }>;
+  transactions?: any[];
 }
 
 // Persistent storage fallback when MONGODB_URI is not provided
@@ -122,22 +144,70 @@ loadLocalData();
 // Helper to calculate date boundaries
 export function getDateFilter(range: string): { start?: Date; end?: Date } {
   const now = new Date();
+
+  // 1. Specific calendar date (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(range)) {
+    const [year, month, day] = range.split('-').map(Number);
+    const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  // 2. Today
   if (range === 'today') {
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     return { start, end };
-  } else if (range === 'week') {
-    // Start of current week (Monday)
-    const day = now.getDay();
-    const diff = (day === 0 ? -6 : 1) - day;
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff, 0, 0, 0, 0);
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    return { start, end };
-  } else if (range === 'month') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  }
+
+  // 3. Yesterday
+  if (range === 'yesterday') {
+    const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const start = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 0, 0, 0, 0);
+    const end = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 23, 59, 59, 999);
     return { start, end };
   }
+
+  // 4. Universal calendar week (Monday 00:00:00 to Sunday 23:59:59.999)
+  // Supports 'week', 'this_week', or 'week:YYYY-MM-DD'
+  if (range === 'week' || range === 'this_week' || range.startsWith('week:')) {
+    let refDate = now;
+    if (range.startsWith('week:')) {
+      const datePart = range.replace('week:', '');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+        const [y, m, d] = datePart.split('-').map(Number);
+        refDate = new Date(y, m - 1, d, 12, 0, 0);
+      }
+    }
+    const day = refDate.getDay();
+    // Monday is start of universal calendar week (if Sunday (0), diff is -6; else 1 - day)
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    const monday = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() + diffToMonday, 0, 0, 0, 0);
+    const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6, 23, 59, 59, 999);
+    return { start: monday, end: sunday };
+  }
+
+  // 5. Calendar month (1st of month 00:00:00 to last day of month 23:59:59.999)
+  // Supports 'month', 'this_month', 'YYYY-MM', or 'month:YYYY-MM'
+  if (range === 'month' || range === 'this_month' || /^\d{4}-\d{2}$/.test(range) || range.startsWith('month:')) {
+    let year = now.getFullYear();
+    let month = now.getMonth();
+    const cleanRange = range.startsWith('month:') ? range.replace('month:', '') : range;
+    if (/^\d{4}-\d{2}$/.test(cleanRange)) {
+      const [y, m] = cleanRange.split('-').map(Number);
+      year = y;
+      month = m - 1;
+    }
+    const start = new Date(year, month, 1, 0, 0, 0, 0);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  // 6. All time / all (no restrictions)
+  if (range === 'all' || range === 'all_time') {
+    return {};
+  }
+
   return {};
 }
 
@@ -165,6 +235,7 @@ export const DBStore = {
   },
 
   async createUser(data: { name: string; phone: string; passwordHash: string; language?: 'en' | 'hi' }) {
+    let savedUser: any;
     if (isMongoActive()) {
       const user = new UserModel({
         name: data.name,
@@ -173,19 +244,28 @@ export const DBStore = {
         language: data.language || 'en',
       });
       const saved = await user.save();
-      return saved.toObject();
+      savedUser = saved.toObject();
+    } else {
+      const newUser: MemUser = {
+        _id: 'usr_' + Date.now() + Math.random().toString(36).substring(2, 6),
+        name: data.name,
+        phone: data.phone,
+        passwordHash: data.passwordHash,
+        language: data.language || 'en',
+        createdAt: new Date().toISOString(),
+      };
+      memUsers.push(newUser);
+      persistLocalData();
+      savedUser = newUser;
     }
-    const newUser: MemUser = {
-      _id: 'usr_' + Date.now() + Math.random().toString(36).substring(2, 6),
-      name: data.name,
-      phone: data.phone,
-      passwordHash: data.passwordHash,
-      language: data.language || 'en',
-      createdAt: new Date().toISOString(),
-    };
-    memUsers.push(newUser);
-    persistLocalData();
-    return newUser;
+
+    const userId = savedUser._id.toString();
+    // Initialize default platforms (Zomato, Swiggy, Blinkit, Rapido)
+    for (const p of DEFAULT_PLATFORMS) {
+      await this.createPlatform(userId, p);
+    }
+
+    return savedUser;
   },
 
   async updateUser(id: string, updates: Partial<{ name: string; language: 'en' | 'hi'; dailyTarget?: number }>) {
@@ -433,7 +513,12 @@ export const DBStore = {
         if (platformAccountId && t.platformAccountId !== platformAccountId) return false;
         if (start && end) {
           const tDate = new Date(t.date);
-          if (tDate < start || tDate > end) return false;
+          const inBounds = tDate >= start && tDate <= end;
+          const prefixMatch =
+            typeof t.date === 'string' &&
+            ((/^\d{4}-\d{2}-\d{2}$/.test(range) && t.date.startsWith(range)) ||
+              (/^\d{4}-\d{2}$/.test(range) && t.date.startsWith(range)));
+          if (!inBounds && !prefixMatch) return false;
         }
         return true;
       })
@@ -526,7 +611,12 @@ export const DBStore = {
       if (t.userId !== userId || t.platformAccountId !== platformAccountId) continue;
       if (start && end) {
         const d = new Date(t.date);
-        if (d < start || d > end) continue;
+        const inBounds = d >= start && d <= end;
+        const prefixMatch =
+          typeof t.date === 'string' &&
+          ((/^\d{4}-\d{2}-\d{2}$/.test(range) && t.date.startsWith(range)) ||
+            (/^\d{4}-\d{2}$/.test(range) && t.date.startsWith(range)));
+        if (!inBounds && !prefixMatch) continue;
       }
       if (t.type === 'earning') {
         totalEarned += t.amount;
@@ -586,6 +676,156 @@ export const DBStore = {
       item.percentage = grandEarned > 0 ? Math.round((item.totalEarned / grandEarned) * 100) : 0;
     }
 
+    // Fetch transactions in this range for deep calendar charts and transaction logs
+    const allTx = await this.getTransactions(userId, undefined, range);
+
+    let dailyBreakdown: DailyBreakdownItem[] | undefined;
+    let weeklyBreakdown: WeeklyBreakdownItem[] | undefined;
+
+    if (range === 'week' || range === 'this_week' || range.startsWith('week:')) {
+      const { start: weekStart } = getDateFilter(range);
+      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      dailyBreakdown = [];
+      if (weekStart) {
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(weekStart);
+          d.setDate(d.getDate() + i);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${day}`;
+          dailyBreakdown.push({
+            date: dateStr,
+            dayName: dayNames[i],
+            totalEarned: 0,
+            totalWithdrawn: 0,
+            netRemaining: 0,
+            tripCount: 0,
+          });
+        }
+
+        // populate from allTx
+        for (const tx of allTx) {
+          const txDate = new Date(tx.date);
+          const y = txDate.getFullYear();
+          const m = String(txDate.getMonth() + 1).padStart(2, '0');
+          const day = String(txDate.getDate()).padStart(2, '0');
+          const txDateStr = `${y}-${m}-${day}`;
+          const item = dailyBreakdown.find((d) => d.date === txDateStr || (typeof tx.date === 'string' && tx.date.startsWith(d.date)));
+          if (item) {
+            if (tx.type === 'earning') {
+              item.totalEarned += tx.amount;
+              item.tripCount = (item.tripCount || 0) + 1;
+            } else if (tx.type === 'withdrawal') {
+              item.totalWithdrawn += tx.amount;
+            } else if (tx.type === 'incentive' && tx.incentiveStatus === 'received') {
+              item.totalEarned += tx.amount;
+            }
+            item.netRemaining = item.totalEarned - item.totalWithdrawn;
+          }
+        }
+      }
+    } else if (range === 'month' || range === 'this_month' || /^\d{4}-\d{2}$/.test(range) || range.startsWith('month:')) {
+      let year = new Date().getFullYear();
+      let month = new Date().getMonth();
+      const cleanRange = range.startsWith('month:') ? range.replace('month:', '') : range;
+      if (/^\d{4}-\d{2}$/.test(cleanRange)) {
+        const [y, m] = cleanRange.split('-').map(Number);
+        year = y;
+        month = m - 1;
+      }
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const mStr = String(month + 1).padStart(2, '0');
+
+      weeklyBreakdown = [
+        { weekLabel: 'Week 1 (Days 1–7)', startDate: `${year}-${mStr}-01`, endDate: `${year}-${mStr}-07`, totalEarned: 0, totalWithdrawn: 0, netRemaining: 0 },
+        { weekLabel: 'Week 2 (Days 8–14)', startDate: `${year}-${mStr}-08`, endDate: `${year}-${mStr}-14`, totalEarned: 0, totalWithdrawn: 0, netRemaining: 0 },
+        { weekLabel: 'Week 3 (Days 15–21)', startDate: `${year}-${mStr}-15`, endDate: `${year}-${mStr}-21`, totalEarned: 0, totalWithdrawn: 0, netRemaining: 0 },
+        { weekLabel: 'Week 4 (Days 22–28)', startDate: `${year}-${mStr}-22`, endDate: `${year}-${mStr}-28`, totalEarned: 0, totalWithdrawn: 0, netRemaining: 0 },
+      ];
+      if (daysInMonth > 28) {
+        weeklyBreakdown.push({
+          weekLabel: `Week 5 (Days 29–${daysInMonth})`,
+          startDate: `${year}-${mStr}-29`,
+          endDate: `${year}-${mStr}-${String(daysInMonth).padStart(2, '0')}`,
+          totalEarned: 0,
+          totalWithdrawn: 0,
+          netRemaining: 0,
+        });
+      }
+
+      for (const tx of allTx) {
+        const txDate = new Date(tx.date);
+        const dayOfMonth = txDate.getDate();
+        let targetWeek: WeeklyBreakdownItem | undefined;
+        if (dayOfMonth <= 7) targetWeek = weeklyBreakdown[0];
+        else if (dayOfMonth <= 14) targetWeek = weeklyBreakdown[1];
+        else if (dayOfMonth <= 21) targetWeek = weeklyBreakdown[2];
+        else if (dayOfMonth <= 28) targetWeek = weeklyBreakdown[3];
+        else if (weeklyBreakdown[4]) targetWeek = weeklyBreakdown[4];
+
+        if (targetWeek) {
+          if (tx.type === 'earning') {
+            targetWeek.totalEarned += tx.amount;
+          } else if (tx.type === 'withdrawal') {
+            targetWeek.totalWithdrawn += tx.amount;
+          } else if (tx.type === 'incentive' && tx.incentiveStatus === 'received') {
+            targetWeek.totalEarned += tx.amount;
+          }
+          targetWeek.netRemaining = targetWeek.totalEarned - targetWeek.totalWithdrawn;
+        }
+      }
+    } else if (range === 'all' || range === 'all_time') {
+      const monthMap = new Map<string, { label: string; earned: number; withdrawn: number; net: number }>();
+      for (const tx of allTx) {
+        const d = new Date(tx.date);
+        const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const mLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        if (!monthMap.has(mKey)) {
+          monthMap.set(mKey, { label: mLabel, earned: 0, withdrawn: 0, net: 0 });
+        }
+        const mItem = monthMap.get(mKey)!;
+        if (tx.type === 'earning') mItem.earned += tx.amount;
+        else if (tx.type === 'withdrawal') mItem.withdrawn += tx.amount;
+        else if (tx.type === 'incentive' && tx.incentiveStatus === 'received') mItem.earned += tx.amount;
+        mItem.net = mItem.earned - mItem.withdrawn;
+      }
+      weeklyBreakdown = Array.from(monthMap.entries()).map(([k, v]) => ({
+        weekLabel: v.label,
+        startDate: `${k}-01`,
+        endDate: `${k}-31`,
+        totalEarned: v.earned,
+        totalWithdrawn: v.withdrawn,
+        netRemaining: v.net,
+      }));
+    }
+
+    // Compute expenses / withdrawals breakdown by tag (Fuel, Food, Maintenance, etc.)
+    const expenseMap = new Map<string, { tag: string; totalAmount: number; count: number }>();
+    for (const tx of allTx) {
+      if (tx.type === 'withdrawal') {
+        const tag = tx.tag?.trim() || 'Other Expense';
+        if (!expenseMap.has(tag)) {
+          expenseMap.set(tag, { tag, totalAmount: 0, count: 0 });
+        }
+        const item = expenseMap.get(tag)!;
+        item.totalAmount += tx.amount;
+        item.count += 1;
+      }
+    }
+    const expenseBreakdown = Array.from(expenseMap.values()).sort((a, b) => b.totalAmount - a.totalAmount);
+
+    const formattedTx = allTx.map((t: any) => ({
+      id: t._id ? t._id.toString() : t.id,
+      platformAccountId: t.platformAccountId ? t.platformAccountId.toString() : '',
+      type: t.type,
+      amount: t.amount,
+      note: t.note,
+      tag: t.tag,
+      date: t.date,
+      incentiveStatus: t.incentiveStatus,
+    }));
+
     return {
       range,
       totalEarned: grandEarned,
@@ -594,6 +834,10 @@ export const DBStore = {
       incentiveReceived: grandIncentiveReceived,
       netRemaining: grandEarned - grandWithdrawn,
       platformBreakdown: breakdown,
+      dailyBreakdown,
+      weeklyBreakdown,
+      expenseBreakdown,
+      transactions: formattedTx,
     };
   },
 

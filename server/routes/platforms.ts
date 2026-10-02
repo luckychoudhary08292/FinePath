@@ -7,11 +7,11 @@ export const platformsRouter = Router();
 // Apply auth to all platform routes
 platformsRouter.use(requireAuth);
 
-// GET /api/platforms — list user's platform accounts with today's summary attached
+// GET /api/platforms — list user's platform accounts with summary attached
 platformsRouter.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const range = (req.query.range as string) || 'today';
+    const range = (req.query.date as string) || (req.query.range as string) || 'today';
     const platforms = await DBStore.getPlatformsForUser(userId);
 
     // Attach summary for the selected range for each platform card
@@ -143,7 +143,7 @@ platformsRouter.get('/:id/summary', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
     const { id } = req.params;
-    const range = (req.query.range as string) || 'today';
+    const range = (req.query.date as string) || (req.query.range as string) || 'today';
 
     const platforms = await DBStore.getPlatformsForUser(userId);
     const platform = platforms.find((p: any) => p._id.toString() === id);

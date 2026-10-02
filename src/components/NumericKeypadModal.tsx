@@ -22,6 +22,7 @@ interface Props {
   platforms: PlatformAccount[];
   selectedPlatformId: string;
   initialType?: TransactionType;
+  initialDate?: string;
   lang: Language;
   onSave: (payload: {
     platformAccountId: string;
@@ -50,6 +51,7 @@ export const NumericKeypadModal: React.FC<Props> = ({
   platforms,
   selectedPlatformId,
   initialType = 'earning',
+  initialDate,
   lang,
   onSave,
 }) => {
@@ -59,7 +61,7 @@ export const NumericKeypadModal: React.FC<Props> = ({
   const [amountStr, setAmountStr] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [note, setNote] = useState('');
-  const [txDate, setTxDate] = useState<string>(TODAY_STR);
+  const [txDate, setTxDate] = useState<string>(initialDate || TODAY_STR);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -69,9 +71,9 @@ export const NumericKeypadModal: React.FC<Props> = ({
       setAmountStr('');
       setSelectedTag(initialType === 'withdrawal' ? 'Fuel' : 'Order Payment');
       setNote('');
-      setTxDate(getLocalDateString());
+      setTxDate(initialDate || getLocalDateString());
     }
-  }, [isOpen, selectedPlatformId, initialType, platforms]);
+  }, [isOpen, selectedPlatformId, initialType, initialDate, platforms]);
 
   if (!isOpen) return null;
 

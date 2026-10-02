@@ -10,7 +10,7 @@ transactionsRouter.use(requireAuth);
 transactionsRouter.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const range = (req.query.range as string) || 'all';
+    const range = (req.query.date as string) || (req.query.range as string) || 'all';
     const platformId = req.query.platformId as string | undefined;
 
     const transactions = await DBStore.getTransactions(userId, platformId, range);

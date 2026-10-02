@@ -9,6 +9,7 @@ interface Props {
   totalWithdrawn: number;
   netRemaining: number;
   incentivePending?: number;
+  incentiveReceived?: number;
 }
 
 export const CombinedSummaryStrip: React.FC<Props> = ({
@@ -17,8 +18,10 @@ export const CombinedSummaryStrip: React.FC<Props> = ({
   totalWithdrawn,
   netRemaining,
   incentivePending = 0,
+  incentiveReceived = 0,
 }) => {
   const t = getT(lang);
+  const totalIncentive = incentivePending + incentiveReceived;
 
   return (
     <section className="px-3 sm:px-6 pt-2.5 sm:pt-4 w-full">
@@ -93,7 +96,7 @@ export const CombinedSummaryStrip: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* MINI Card 4: Pending / Earned Incentive */}
+        {/* MINI Card 4: Incentive */}
         <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/90 shadow-xs flex flex-col justify-between min-h-[76px] sm:min-h-[96px]">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] sm:text-xs font-bold text-slate-600 block truncate">
@@ -107,11 +110,13 @@ export const CombinedSummaryStrip: React.FC<Props> = ({
             <div className="flex items-baseline gap-0.5">
               <span className="text-[11px] sm:text-xs font-bold text-amber-600">₹</span>
               <span className="text-lg sm:text-2xl font-black text-slate-900 font-mono tracking-tight tabular-nums">
-                {incentivePending.toLocaleString('en-IN')}
+                {totalIncentive.toLocaleString('en-IN')}
               </span>
             </div>
             <p className="text-[9px] sm:text-[10px] text-slate-600 font-medium truncate mt-0.5">
-              {t.bonusIncentives}
+              {incentiveReceived > 0
+                ? (lang === 'hi' ? `₹${incentiveReceived} प्राप्त • ₹${incentivePending} बाकी` : `₹${incentiveReceived} rec. • ₹${incentivePending} pend.`)
+                : (lang === 'hi' ? (incentivePending > 0 ? `₹${incentivePending} बाकी बोनस` : 'इंसेंटिव बोनस') : (incentivePending > 0 ? `₹${incentivePending} pending` : 'Bonus Incentives'))}
             </p>
           </div>
         </div>
